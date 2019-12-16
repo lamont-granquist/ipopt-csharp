@@ -9,21 +9,94 @@ on:
       - master
 
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-latest
+  ubuntu_build:
+    name: Ubuntu Build
+    runs-on: ubuntu-16.04
 
     steps:
     - uses: actions/checkout@v1
 
-    - name: Update Submodules
+    - name: Download and Build Ipopt
       run: |
-        git submodule init
-        git submodule update
-
-    - name: Build OpenBLAS
-      run: |
-        chdir dependencies/OpenBLAS
+        sudo apt-get install gcc g++ gfortran subversion patch wget
+        wget -nv https://www.coin-or.org/download/source/Ipopt/Ipopt-3.12.13.tgz
+        tar xzf Ipopt-3.12.13.tgz
+        cd Ipopt-3.12.13
+        pushd ThirdParty/Blas
+        ./get.Blas
+        popd
+        pushd ThirdParty/Lapack
+        ./get.Lapack
+        popd
+        pushd ThirdParty/Metis
+        ./get.Metis
+        popd
+        pushd ThirdParty/Mumps
+        ./get.Mumps
+        popd
+        ./configure --with-blas=BUILD --with-lapack=BUILD
         make
-      env:
-        CFLAGS: -DDYNAMIC_ARCH=1
+        find . -name \*.so
+
+  mac_build:
+    name: Mac Build
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Download and Build Ipopt
+      run: |
+        brew install gcc
+        wget -nv https://www.coin-or.org/download/source/Ipopt/Ipopt-3.12.13.tgz
+        tar xzf Ipopt-3.12.13.tgz
+        cd Ipopt-3.12.13
+        pushd ThirdParty/Blas
+        ./get.Blas
+        popd
+        pushd ThirdParty/Lapack
+        ./get.Lapack
+        popd
+        pushd ThirdParty/Metis
+        ./get.Metis
+        popd
+        pushd ThirdParty/Mumps
+        ./get.Mumps
+        popd
+        ./configure --with-blas=BUILD --with-lapack=BUILD
+        make
+        find . -name \*.dylib
+
+  windows_build:
+    name: Windows Build
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - uses: numworks/setup-msys2@v1
+
+    - run: msys2do pacman --noconfirm -S wget unzip gcc gcc-fortran tar patch make
+    - run: msys2do wget -nv https://www.coin-or.org/download/source/Ipopt/Ipopt-3.12.13.zip
+    - run: msys2do unzip Ipopt-3.12.13.zip
+
+    - name: get Blas
+      run: msys2do ./get.Blas
+      working-directory: Ipopt-3.12.13/ThirdParty/Blas
+    - name: get Lapack
+      run: msys2do ./get.Lapack
+      working-directory: Ipopt-3.12.13/ThirdParty/Lapack
+    - name: get Metis
+      run: msys2do ./get.Metis
+      working-directory: Ipopt-3.12.13/ThirdParty/Metis
+    - name: get Mumps
+      run: msys2do ./get.Mumps
+      working-directory: Ipopt-3.12.13/ThirdParty/Mumps
+
+    - name: run configure
+      run: msys2do ./configure --with-blas=BUILD --with-lapack=BUILD
+      working-directory: Ipopt-3.12.13
+
+    - name: run make
+      run: msys2do make
+      working-directory: Ipopt-3.12.13
+
